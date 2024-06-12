@@ -112,6 +112,9 @@ async function generatePDF(context, templateFileName, jsonData) {
     const tempDir = os.tmpdir();
     const outputPath = path.join(tempDir, `${templateFileName}_${Date.now()}.pdf`);
     context.log('Saving PDF to temporary path:', outputPath);
+
+    // Execute the operation and save to a temporary file
+    const result = await documentMergeOperation.execute(executionContext);
     await result.saveAsFile(outputPath);
 
     const pdfBuffer = fs.readFileSync(outputPath);
