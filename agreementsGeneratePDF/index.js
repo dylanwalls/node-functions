@@ -5,6 +5,8 @@ const fetch = async (...args) => {
     return module.default(...args);
 };
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 
 // Assuming these are correctly set in your application's environment variables
 const AZURE_STORAGE_CONNECTION_STRING = process.env["AZURE_STORAGE_CONNECTION_STRING"];
@@ -106,10 +108,15 @@ async function generatePDF(context, templateFileName, jsonData) {
     const input = PDFServicesSdk.FileRef.createFromLocalFile(templateFilePath);
     documentMergeOperation.setInput(input);
 
-    // Assuming the operation can be modified to return a buffer
-    const result = await documentMergeOperation.execute(executionContext);
-    const buffer = await result.getAsBuffer();
-    return buffer;
+    // Use a temporary file to avoid dependency on a specific directory structure
+    const tempDir = os.tmpdir();
+    const outputPath = path.join(tempDir, `${templateFileName}_${Date.now()}.pdf`);
+    context.log('Saving PDF to temporary path:', outputPath);
+    await result.saveAsFile(outputPath);
+
+    const pdfBuffer = fs.readFileSync(outputPath);
+    fs.unlinkSync(outputPath); // Clean up the temporary file
+    return pdfBuffer;
 }
 
 async function uploadPdfToBlob(pdfBuffer, fileName) {
