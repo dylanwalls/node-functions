@@ -5,7 +5,6 @@ const fetch = async (...args) => {
     return module.default(...args);
 };
 const path = require('path');
-const fs = require('fs');
 
 // Assuming these are correctly set in your application's environment variables
 const AZURE_STORAGE_CONNECTION_STRING = process.env["AZURE_STORAGE_CONNECTION_STRING"];
@@ -26,7 +25,7 @@ module.exports = async function (context, req) {
     try {
         context.log('Generating PDF.');
         context.log('jsonData:', jsonData);
-        const pdfBuffer = await generatePDF(templateFileName, jsonData);
+        const pdfBuffer = await generatePDF(context, templateFileName, jsonData);
         context.log('PDF generated successfully.');
 
         context.log('Uploading PDF to Azure Blob Storage.');
@@ -57,7 +56,6 @@ module.exports = async function (context, req) {
                 fileNameFormatted = `Agreement between ${fullNames} and Bitprop ${dateTimeCreated}.pdf`; // Default or fallback filename format
                 break;
         }
-
 
         // Only insert metadata for "notarial_lease_template.docx"
         if (templateFileName === "notarial_lease_template.docx") {
@@ -93,8 +91,7 @@ module.exports = async function (context, req) {
     }
 };
 
-
-async function generatePDF(templateFileName, jsonData) {
+async function generatePDF(context, templateFileName, jsonData) {
     const credentials = PDFServicesSdk.Credentials.servicePrincipalCredentialsBuilder()
         .withClientId("706671304abe4520b31d650bcf3b09ee")
         .withClientSecret("p8e-MhPcIrM2cvJmOmnlw0eMyK7rpw0gEZ7L")
@@ -109,19 +106,10 @@ async function generatePDF(templateFileName, jsonData) {
     const input = PDFServicesSdk.FileRef.createFromLocalFile(templateFilePath);
     documentMergeOperation.setInput(input);
 
-    // Ensure the output directory exists
-    const outputDir = path.join(__dirname, '..', 'output');
-    if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir);
-    }
-
     // Assuming the operation can be modified to return a buffer
     const result = await documentMergeOperation.execute(executionContext);
-    const outputPath = path.join(__dirname, '..', 'output', `${templateFileName}_${Date.now()}.pdf`);
-    await result.saveAsFile(outputPath);
-    const pdfBuffer = fs.readFileSync(outputPath);
-    fs.unlinkSync(outputPath); // Clean up the temporary file
-    return pdfBuffer;
+    const buffer = await result.getAsBuffer();
+    return buffer;
 }
 
 async function uploadPdfToBlob(pdfBuffer, fileName) {
