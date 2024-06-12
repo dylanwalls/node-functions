@@ -109,6 +109,12 @@ async function generatePDF(templateFileName, jsonData) {
     const input = PDFServicesSdk.FileRef.createFromLocalFile(templateFilePath);
     documentMergeOperation.setInput(input);
 
+    // Ensure the output directory exists
+    const outputDir = path.join(__dirname, '..', 'output');
+    if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir);
+    }
+
     // Assuming the operation can be modified to return a buffer
     const result = await documentMergeOperation.execute(executionContext);
     const outputPath = path.join(__dirname, '..', 'output', `${templateFileName}_${Date.now()}.pdf`);
